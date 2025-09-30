@@ -1,0 +1,33 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@apply",
+      "description": "Use the @apply directive to inline any existing utility classes into your own custom CSS."
+    },
+    {
+      "name": "@theme",
+      "description": "Use the @theme directive to access theme values in your CSS."
+    },
+    {
+      "name": "@tailwind",
+      "description": "Use the @tailwind directive to insert Tailwind's base, components, utilities and screens styles into your CSS."
+    },
+    {
+      "name": "@layer",
+      "description": "Use the @layer directive to tell Tailwind which \"bucket\" a set of custom styles belong to."
+    },
+    {
+      "name": "@responsive",
+      "description": "Use the @responsive directive to generate responsive variants of your own classes."
+    },
+    {
+      "name": "@variants",
+      "description": "Use the @variants directive to generate state variants of your own utilities."
+    },
+    {
+      "name": "@screen",
+      "description": "Use the @screen directive to create media queries that reference your breakpoints by name."
+    }
+  ]
+}
