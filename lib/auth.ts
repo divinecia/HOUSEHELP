@@ -1,10 +1,12 @@
 // JWT Authentication with bcrypt
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 import { JWTPayload, AuthUser } from './types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '7d'; // Token expires in 7 days
+const secretKey = new TextEncoder().encode(JWT_SECRET);
+
 
 /**
  * Hash a password using bcrypt
@@ -27,27 +29,30 @@ export async function comparePassword(
 /**
  * Generate a JWT token for a user
  */
-export function generateToken(user: AuthUser): string {
+export async function generateToken(user: AuthUser): Promise<string> {
   const payload: JWTPayload = {
     userId: user.id,
     email: user.email,
     userType: user.user_type,
   };
 
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(JWT_EXPIRES_IN)
+    .sign(secretKey);
 }
 
 /**
  * Verify and decode a JWT token
  */
-export function verifyToken(token: string): JWTPayload | null {
+export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    return decoded;
+    const { payload } = await jwtVerify(token, secretKey);
+    return payload as JWTPayload;
   } catch (error) {
-    console.error('Token verification failed:', error);
+    // This will catch expired tokens, invalid signatures, etc.
+    // console.error('Token verification failed:', error);
     return null;
   }
 }

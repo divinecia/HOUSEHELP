@@ -56,7 +56,7 @@ export async function registerUser(data: RegisterData): Promise<{
     };
 
     // Generate JWT token
-    const token = generateToken(authUser);
+    const token = await generateToken(authUser);
 
     return {
       success: true,
@@ -144,7 +144,7 @@ export async function loginUser(credentials: LoginCredentials): Promise<{
     };
 
     // Generate JWT token
-    const token = generateToken(authUser);
+    const token = await generateToken(authUser);
 
     return {
       success: true,
@@ -169,7 +169,7 @@ export async function verifyUser(token: string): Promise<{
   error?: string;
 }> {
   try {
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
 
     if (!payload) {
       return {
@@ -363,18 +363,18 @@ export async function getUserById(
 /**
  * Extract user from request headers
  */
-export function extractUserFromHeaders(headers: Headers): {
+export async function extractUserFromHeaders(headers: Headers): Promise<{
   userId?: string;
   userType?: 'worker' | 'household' | 'admin';
   token?: string;
-} {
+}> {
   const authHeader = headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return {};
   }
 
   const token = authHeader.substring(7);
-  const payload = verifyToken(token);
+  const payload = await verifyToken(token);
 
   if (!payload) {
     return {};
