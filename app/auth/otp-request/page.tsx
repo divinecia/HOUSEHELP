@@ -23,9 +23,19 @@ export default function OtpRequestPage() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setCooldown(60);
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: countryCode + phone }),
+      });
+      if (!res.ok) throw new Error('Failed to send OTP');
+      setCooldown(60);
+    } catch (error) {
+      // Error handling - could show toast/alert
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

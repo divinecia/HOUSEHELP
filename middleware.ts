@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { verifyToken } from "./lib/auth";
 
 export async function middleware(req: NextRequest) {
   const url = new URL(req.url);
   const pathname = url.pathname;
 
-  // Check for JWT token in localStorage (client-side) or cookies
-  const token = req.cookies.get('hh-token')?.value || 
-                req.headers.get('authorization')?.replace('Bearer ', '');
-
   // Admin routes - use NextAuth
   if (pathname.startsWith('/admin')) {
     const nextAuthToken = await getToken({ req: req as any, secret: process.env.NEXTAUTH_SECRET });
-    
+
     if (!nextAuthToken) {
       return NextResponse.redirect(new URL("/admin", url));
     }
@@ -30,28 +27,60 @@ export async function middleware(req: NextRequest) {
   }
 
   // Worker protected routes
-  if (pathname.startsWith('/worker') && 
-      !pathname.startsWith('/worker/login') && 
+  if (pathname.startsWith('/worker') &&
+      !pathname.startsWith('/worker/login') &&
       !pathname.startsWith('/worker/register')) {
-    
-    // Check if user has token (will be verified on client side)
-    // For server-side, we'll add a header check
+
+    // Check for JWT token
+    const token = req.cookies.get('hh-token')?.value ||
+                  req.headers.get('authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return NextResponse.redirect(new URL('/worker/login', url));
+    }
+
+    // Verify token
+    const payload = verifyToken(token);
+    if (!payload || payload.userType !== 'worker') {
+      // Invalid or expired token
+      const response = NextResponse.redirect(new URL('/worker/login', url));
+      response.cookies.delete('hh-token');
+      return response;
+    }
+
+    // Token is valid, proceed
     const response = NextResponse.next();
-    
-    // Add a header to indicate this is a protected route
-    response.headers.set('x-protected-route', 'worker');
-    
+    response.headers.set('x-user-id', payload.userId);
+    response.headers.set('x-user-type', payload.userType);
     return response;
   }
 
   // Household protected routes
-  if (pathname.startsWith('/household') && 
-      !pathname.startsWith('/household/login') && 
+  if (pathname.startsWith('/household') &&
+      !pathname.startsWith('/household/login') &&
       !pathname.startsWith('/household/register')) {
-    
+
+    // Check for JWT token
+    const token = req.cookies.get('hh-token')?.value ||
+                  req.headers.get('authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return NextResponse.redirect(new URL('/household/login', url));
+    }
+
+    // Verify token
+    const payload = verifyToken(token);
+    if (!payload || payload.userType !== 'household') {
+      // Invalid or expired token
+      const response = NextResponse.redirect(new URL('/household/login', url));
+      response.cookies.delete('hh-token');
+      return response;
+    }
+
+    // Token is valid, proceed
     const response = NextResponse.next();
-    response.headers.set('x-protected-route', 'household');
-    
+    response.headers.set('x-user-id', payload.userId);
+    response.headers.set('x-user-type', payload.userType);
     return response;
   }
 

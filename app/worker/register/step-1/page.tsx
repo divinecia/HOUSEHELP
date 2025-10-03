@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { RWANDA_DISTRICTS } from "@/lib/config";
 
 const schema = z.object({
   full_name: z.string().min(2, "Full name must be at least 2 characters"),
@@ -186,9 +187,9 @@ export default function WorkerStep1() {
                 <label className="hh-label" htmlFor="district">District</label>
                 <select id="district" className="hh-select" value={form.district} onChange={(e)=>setForm({...form, district: e.target.value})}>
                   <option value="">Select</option>
-                  <option value="Gasabo">Gasabo</option>
-                  <option value="Kicukiro">Kicukiro</option>
-                  <option value="Nyarugenge">Nyarugenge</option>
+                  {RWANDA_DISTRICTS.map(district => (
+                    <option key={district} value={district}>{district}</option>
+                  ))}
                 </select>
               </div>
               <div>

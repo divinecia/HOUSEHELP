@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 
 export default function WorkerSystemReportsPage() {
   const [workerId, setWorkerId] = useState<string>("");
@@ -33,37 +34,39 @@ export default function WorkerSystemReportsPage() {
   }
 
   return (
-    <div className="hh-page">
-      <main className="hh-main">
-        <h1 className="hh-title">System Issue Report</h1>
-        <p className="hh-subtitle">Report technical problems or bugs</p>
+    <AuthGuard requiredType="worker">
+      <div className="hh-page">
+        <main className="hh-main">
+          <h1 className="hh-title">System Issue Report</h1>
+          <p className="hh-subtitle">Report technical problems or bugs</p>
 
-        <div className="mt-4 flex items-center gap-3">
-          <label className="hh-label">Worker ID
-            <input className="hh-input ml-2" placeholder="W-..." value={workerId} onChange={(e)=>{ setWorkerId(e.target.value); localStorage.setItem('hh-worker-id', e.target.value); }} />
-          </label>
-          <Link href="/worker/dashboard" className="hh-link ml-auto">← Back</Link>
-        </div>
+          <div className="mt-4 flex items-center gap-3">
+            <label className="hh-label">Worker ID
+              <input className="hh-input ml-2" placeholder="W-..." value={workerId} onChange={(e)=>{ setWorkerId(e.target.value); localStorage.setItem('hh-worker-id', e.target.value); }} />
+            </label>
+            <Link href="/worker/dashboard" className="hh-link ml-auto">← Back</Link>
+          </div>
 
-        {err && <div className="hh-error mt-3">{err}</div>}
-        {success && <div className="mt-3 p-3 bg-green-100 text-green-800 rounded">Report submitted successfully.</div>}
+          {err && <div className="hh-error mt-3">{err}</div>}
+          {success && <div className="mt-3 p-3 bg-green-100 text-green-800 rounded">Report submitted successfully.</div>}
 
-        <div className="hh-content-section">
-          <div className="hh-form-grid">
-            <div className="sm:col-span-2">
-              <label className="hh-label">Subject</label>
-              <input className="hh-input" placeholder="Brief summary of the issue" value={subject} onChange={(e)=>setSubject(e.target.value)} />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="hh-label">Description *</label>
-              <textarea className="hh-input" rows={5} placeholder="Detailed description of the system issue..." value={description} onChange={(e)=>setDescription(e.target.value)} />
-            </div>
-            <div className="sm:col-span-2">
-              <button className="hh-btn hh-btn-primary" onClick={submit} disabled={loading || !workerId || !description}>Submit Report</button>
+          <div className="hh-content-section">
+            <div className="hh-form-grid">
+              <div className="sm:col-span-2">
+                <label className="hh-label">Subject</label>
+                <input className="hh-input" placeholder="Brief summary of the issue" value={subject} onChange={(e)=>setSubject(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="hh-label">Description *</label>
+                <textarea className="hh-input" rows={5} placeholder="Detailed description of the system issue..." value={description} onChange={(e)=>setDescription(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <button className="hh-btn hh-btn-primary" onClick={submit} disabled={loading || !workerId || !description}>Submit Report</button>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </AuthGuard>
   );
 }

@@ -6,11 +6,19 @@ import { createServerClient } from '@/lib/supabase';
 import { z } from 'zod';
 
 // Validation schemas
+// Strong password validation
+const strongPasswordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character');
+
 const workerRegistrationSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().min(9, 'Phone number is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: strongPasswordSchema,
   national_id: z.string().optional(),
   date_of_birth: z.string().optional(),
   gender: z.enum(['Male', 'Female', 'Other']).optional(),
@@ -27,7 +35,7 @@ const householdRegistrationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(9, 'Phone number is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: strongPasswordSchema,
   alternative_contact: z.string().optional(),
   district: z.string().optional(),
   sector: z.string().optional(),

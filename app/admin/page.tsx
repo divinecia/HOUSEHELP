@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 
 const schema = z.object({
@@ -13,6 +15,7 @@ const schema = z.object({
 });
 
 export default function AdminPage() {
+  const router = useRouter();
   const [empId, setEmpId] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -34,9 +37,25 @@ export default function AdminPage() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setLoading(false);
-    setError("Invalid credentials. Please try again or contact IT support.");
+
+    try {
+      const result = await signIn("admin", {
+        empId,
+        password,
+        code: code || undefined,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("Invalid credentials. Please try again or contact IT support.");
+      } else if (result?.ok) {
+        router.push("/admin/dashboard");
+      }
+    } catch (err) {
+      setError("Authentication failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

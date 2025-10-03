@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase';
+import { getClientIP, checkRateLimit, rateLimitResponse } from '@/lib/api-auth';
 import { z } from 'zod';
 
 // Validation schema
@@ -9,26 +10,92 @@ const verifyOTPSchema = z.object({
   purpose: z.enum(['registration', 'password_reset', 'phone_verification', 'email_verification']),
 });
 
+// In-memory tracking for OTP verification attempts
+const otpAttempts = new Map<string, { count: number; lockedUntil?: number }>();
+
+/**
+ * Check if identifier is locked due to too many failed attempts
+ */
+function checkOTPLock(identifier: string): { locked: boolean; remainingTime?: number } {
+  const record = otpAttempts.get(identifier);
+  if (!record?.lockedUntil) {
+    return { locked: false };
+  }
+
+  const now = Date.now();
+  if (now < record.lockedUntil) {
+    return { locked: true, remainingTime: Math.ceil((record.lockedUntil - now) / 1000) };
+  }
+
+  // Lock expired, reset
+  otpAttempts.delete(identifier);
+  return { locked: false };
+}
+
+/**
+ * Record failed OTP attempt
+ */
+function recordFailedAttempt(identifier: string) {
+  const record = otpAttempts.get(identifier) || { count: 0 };
+  record.count++;
+
+  // Lock after 5 failed attempts for 15 minutes
+  if (record.count >= 5) {
+    record.lockedUntil = Date.now() + 15 * 60 * 1000;
+  }
+
+  otpAttempts.set(identifier, record);
+}
+
+/**
+ * Clear attempts on successful verification
+ */
+function clearAttempts(identifier: string) {
+  otpAttempts.delete(identifier);
+}
+
 /**
  * POST /api/auth/verify-otp
  * Verify an OTP code
  */
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting by IP
+    const clientIP = getClientIP(req);
+    const rateLimit = checkRateLimit(`otp:${clientIP}`, 10, 60000);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse();
+    }
+
     const body = await req.json();
 
     // Validate request body
     let validatedData;
     try {
       validatedData = verifyOTPSchema.parse(body);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const zodError = error as z.ZodError;
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: zodError.errors },
         { status: 400 }
       );
     }
 
     const { identifier, code, purpose } = validatedData;
+
+    // Check if identifier is locked due to failed attempts
+    const lockStatus = checkOTPLock(identifier);
+    if (lockStatus.locked) {
+      return NextResponse.json(
+        {
+          error: `Too many failed attempts. Try again in ${lockStatus.remainingTime} seconds.`,
+          locked: true,
+          retry_after: lockStatus.remainingTime
+        },
+        { status: 429 }
+      );
+    }
+
     const supabase = createServerClient();
 
     // Find the OTP code
@@ -42,6 +109,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (fetchError || !otpRecord) {
+      recordFailedAttempt(identifier);
       return NextResponse.json(
         { error: 'Invalid or expired OTP code' },
         { status: 400 }
@@ -53,6 +121,7 @@ export async function POST(req: NextRequest) {
     const expiresAt = new Date(otpRecord.expires_at);
 
     if (now > expiresAt) {
+      recordFailedAttempt(identifier);
       return NextResponse.json(
         { error: 'OTP code has expired. Please request a new one.' },
         { status: 400 }
@@ -68,6 +137,9 @@ export async function POST(req: NextRequest) {
     if (updateError) {
       console.error('Failed to mark OTP as used:', updateError);
     }
+
+    // Clear failed attempts on successful verification
+    clearAttempts(identifier);
 
     // If this is for registration or email verification, update user verification status
     if (purpose === 'registration' || purpose === 'email_verification') {

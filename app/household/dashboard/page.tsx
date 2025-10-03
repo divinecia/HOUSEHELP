@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import AuthGuard from "@/components/AuthGuard";
 
 function StatCard({ title, value, sub }: { title: string; value: string; sub?: string }) {
   return (
@@ -102,8 +103,9 @@ export default function HouseholdDashboard() {
   }
 
   return (
-    <div className="hh-page">
-      <div className="grid grid-cols-12 gap-6 w-full">
+    <AuthGuard requiredType="household">
+      <div className="hh-page">
+        <div className="grid grid-cols-12 gap-6 w-full">
         {/* Sidebar */}
         <aside className="col-span-12 md:col-span-3 lg:col-span-2">
           <div className="hh-panel-sticky">
@@ -285,5 +287,6 @@ export default function HouseholdDashboard() {
         </main>
       </div>
     </div>
+    </AuthGuard>
   );
 }

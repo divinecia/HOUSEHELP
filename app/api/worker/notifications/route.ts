@@ -1,4 +1,10 @@
 import { NextRequest } from "next/server";
+import {
+  authenticateRequest,
+  unauthorizedResponse,
+  forbiddenResponse,
+  serverErrorResponse,
+} from "@/lib/api-auth";
 
 function env() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,10 +15,19 @@ function env() {
 
 export async function GET(req: NextRequest) {
   try {
+    // Authentication
+    const auth = authenticateRequest(req);
+    if (!auth.authenticated) {
+      return unauthorizedResponse(auth.error);
+    }
+
+    // Verify user is a worker
+    if (auth.userType !== 'worker') {
+      return forbiddenResponse("Access restricted to workers");
+    }
+
     const { url, key } = env();
-    const { searchParams } = new URL(req.url);
-    const worker_id = searchParams.get('worker_id');
-    if (!worker_id) return Response.json({ error: 'worker_id required' }, { status: 400 });
+    const worker_id = auth.userId; // Use authenticated user ID
     const res = await fetch(`${url}/rest/v1/notifications?worker_id=eq.${encodeURIComponent(worker_id)}&order=created_at.desc&limit=50`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store',
     });
@@ -20,6 +35,6 @@ export async function GET(req: NextRequest) {
     const items = await res.json();
     return Response.json({ ok: true, items });
   } catch (e: any) {
-    return Response.json({ error: e.message }, { status: 500 });
+    return serverErrorResponse(e);
   }
 }

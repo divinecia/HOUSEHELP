@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 
 export default function WorkerEarningsPage() {
   const [workerId, setWorkerId] = useState<string>("");
@@ -34,6 +35,7 @@ export default function WorkerEarningsPage() {
   const total = items.reduce((sum, p) => sum + Number(p.payout ?? 0), 0);
 
   return (
+    <AuthGuard requiredType="worker">
     <div className="hh-page">
       <main className="hh-main">
         <h1 className="hh-title">Earnings</h1>
@@ -91,5 +93,6 @@ export default function WorkerEarningsPage() {
         </div>
       </main>
     </div>
+    </AuthGuard>
   );
 }

@@ -3,7 +3,23 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { JWTPayload, AuthUser } from './types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// Use Web Crypto API for Edge Runtime compatibility
+const getCrypto = () => {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    return crypto;
+  }
+  // Fallback for Node.js environment
+  const { webcrypto } = require('crypto');
+  return webcrypto;
+};
+
+const webCrypto = getCrypto();
+
+// Validate JWT_SECRET exists - no fallback for security
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable must be set. Generate one with: openssl rand -hex 32');
+}
 const JWT_EXPIRES_IN = '7d'; // Token expires in 7 days
 
 /**
@@ -34,6 +50,10 @@ export function generateToken(user: AuthUser): string {
     userType: user.user_type,
   };
 
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
@@ -44,8 +64,23 @@ export function generateToken(user: AuthUser): string {
  */
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-    return decoded;
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET is not configured');
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Type guard to ensure decoded is an object
+    if (typeof decoded === 'string' || !decoded || typeof decoded !== 'object') {
+      return null;
+    }
+
+    // Validate required fields
+    if ('userId' in decoded && 'email' in decoded && 'userType' in decoded) {
+      return decoded as JWTPayload;
+    }
+
+    return null;
   } catch (error) {
     console.error('Token verification failed:', error);
     return null;
@@ -63,23 +98,21 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
 }
 
 /**
- * Generate a random OTP code
+ * Generate a cryptographically secure random OTP code
  */
 export function generateOTP(length: number = 6): string {
-  const digits = '0123456789';
-  let otp = '';
-  for (let i = 0; i < length; i++) {
-    otp += digits[Math.floor(Math.random() * digits.length)];
-  }
-  return otp;
+  const array = new Uint8Array(length);
+  webCrypto.getRandomValues(array);
+  return Array.from(array, byte => (byte % 10).toString()).join('');
 }
 
 /**
- * Generate a random verification token
+ * Generate a cryptographically secure verification token
  */
 export function generateVerificationToken(): string {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
+  const array = new Uint8Array(32);
+  webCrypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**
@@ -174,13 +207,34 @@ export function sanitizeInput(input: string): string {
 }
 
 /**
- * Generate a secure random string
+ * Generate a cryptographically secure random string
  */
 export function generateSecureRandom(length: number = 32): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  const array = new Uint8Array(length);
+  webCrypto.getRandomValues(array);
+  return btoa(String.fromCharCode(...array)).replace(/[+/=]/g, '').substring(0, length);
+}
+
+/**
+ * Update user password (for password reset functionality)
+ * This returns the hashed password for the API route to use with Supabase
+ */
+export async function updatePassword(
+  userId: string,
+  userType: 'worker' | 'household' | 'admin',
+  newPassword: string
+): Promise<{ success: boolean; error?: string; hashedPassword?: string }> {
+  try {
+    const hashedPassword = await hashPassword(newPassword);
+
+    return {
+      success: true,
+      hashedPassword,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to hash password',
+    };
   }
-  return result;
 }

@@ -57,14 +57,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create session in database
+    // Create session in database - MUST succeed
     try {
       const supabase = createServerClient();
       const expiresAt = remember_me
         ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
         : new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-      await supabase.from('sessions').insert({
+      const { error: sessionError } = await supabase.from('sessions').insert({
         user_id: result.user?.id,
         user_type,
         token: result.token,
@@ -72,9 +72,21 @@ export async function POST(req: NextRequest) {
         user_agent: req.headers.get('user-agent') || 'unknown',
         expires_at: expiresAt.toISOString(),
       });
+
+      // Fail login if session creation fails
+      if (sessionError) {
+        console.error('Failed to create session:', sessionError);
+        return NextResponse.json(
+          { error: 'Failed to create session. Please try again.' },
+          { status: 500 }
+        );
+      }
     } catch (error) {
       console.error('Failed to create session:', error);
-      // Don't fail login if session creation fails
+      return NextResponse.json(
+        { error: 'Failed to create session. Please try again.' },
+        { status: 500 }
+      );
     }
 
     // Log successful login

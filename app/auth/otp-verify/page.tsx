@@ -60,10 +60,22 @@ export default function OtpVerifyPage() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    // Simulate success
-    router.push("/auth/otp-success");
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneNumber, otp }),
+      });
+      if (!res.ok) {
+        setError("Invalid OTP. Please try again.");
+        return;
+      }
+      router.push("/auth/otp-success");
+    } catch (err) {
+      setError("Verification failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

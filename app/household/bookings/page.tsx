@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import AuthGuard from "@/components/AuthGuard";
 
 export default function HouseholdBookingsPage() {
   const [householdId, setHouseholdId] = useState<string>("");
@@ -45,62 +46,71 @@ export default function HouseholdBookingsPage() {
   }
 
   return (
-    <div className="hh-page">
-      <main className="hh-main">
-        <h1 className="hh-title">My Bookings</h1>
-        <p className="hh-subtitle">View and manage your bookings</p>
+    <AuthGuard requiredType="household">
+      <div className="hh-page">
+        <main className="hh-main">
+          <h1 className="hh-title">My Bookings</h1>
+          <p className="hh-subtitle">View and manage your bookings</p>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="hh-label">Household ID
-            <input className="hh-input ml-2" placeholder="HH-..." value={householdId} onChange={(e)=>{ setHouseholdId(e.target.value); localStorage.setItem('hh-household-id', e.target.value); }} />
-          </label>
-          <label className="hh-label">Status
-            <select className="hh-select ml-2" value={status} onChange={(e)=>setStatus(e.target.value)}>
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </label>
-          <button className="hh-btn hh-btn-secondary" onClick={load} disabled={loading}>Refresh</button>
-          <Link href="/household/dashboard" className="hh-link ml-auto">← Back</Link>
-        </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <label className="hh-label">Household ID
+              <input className="hh-input ml-2" placeholder="HH-..." value={householdId} onChange={(e)=>{ setHouseholdId(e.target.value); localStorage.setItem('hh-household-id', e.target.value); }} />
+            </label>
+            <label className="hh-label">Status
+              <select className="hh-select ml-2" value={status} onChange={(e)=>setStatus(e.target.value)}>
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </label>
+            <button className="hh-btn hh-btn-secondary" onClick={load} disabled={loading}>Refresh</button>
+            <Link href="/household/dashboard" className="hh-link ml-auto">← Back</Link>
+          </div>
 
-        {err && <div className="hh-error mt-3">{err}</div>}
+          {err && <div className="hh-error mt-3">{err}</div>}
 
-        <div className="mt-4 overflow-auto rounded-lg border border-slate-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="p-3 text-left">Scheduled</th>
-                <th className="p-3 text-left">Service</th>
-                <th className="p-3 text-left">Worker</th>
-                <th className="p-3 text-left">Status</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((b)=> (
-                <tr key={b.id} className="border-t">
-                  <td className="p-3">{new Date(b.scheduled_at).toLocaleString()}</td>
-                  <td className="p-3">{b.service}</td>
-                  <td className="p-3">{b.worker_id ?? 'TBD'}</td>
-                  <td className="p-3">{b.status}</td>
-                  <td className="p-3">
-                    {(b.status === 'pending' || b.status === 'active') && (
-                      <button className="hh-btn hh-btn-secondary" onClick={()=>cancel(b.id)}>Cancel</button>
-                    )}
-                  </td>
+          <div className="mt-4 overflow-auto rounded-lg border border-slate-200">
+            <table className="min-w-full text-sm" role="table" aria-label="Bookings list">
+              <caption className="sr-only">List of your service bookings</caption>
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th scope="col" className="p-3 text-left">Scheduled</th>
+                  <th scope="col" className="p-3 text-left">Service</th>
+                  <th scope="col" className="p-3 text-left">Worker</th>
+                  <th scope="col" className="p-3 text-left">Status</th>
+                  <th scope="col" className="p-3 text-left">Actions</th>
                 </tr>
-              ))}
-              {items.length === 0 && !loading && (
-                <tr><td colSpan={5} className="p-3 hh-muted">No bookings found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </main>
-    </div>
+              </thead>
+              <tbody>
+                {items.map((b)=> (
+                  <tr key={b.id} className="border-t">
+                    <td className="p-3">{new Date(b.scheduled_at).toLocaleString()}</td>
+                    <td className="p-3">{b.service}</td>
+                    <td className="p-3">{b.worker_id ?? 'TBD'}</td>
+                    <td className="p-3">{b.status}</td>
+                    <td className="p-3">
+                      {(b.status === 'pending' || b.status === 'active') && (
+                        <button
+                          className="hh-btn hh-btn-secondary"
+                          onClick={()=>cancel(b.id)}
+                          aria-label={`Cancel booking for ${b.service}`}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {items.length === 0 && !loading && (
+                  <tr><td colSpan={5} className="p-3 hh-muted">No bookings found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </main>
+      </div>
+    </AuthGuard>
   );
 }

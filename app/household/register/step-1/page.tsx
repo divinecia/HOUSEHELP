@@ -6,6 +6,7 @@ import ServiceCategoriesPreview from "@/components/ServiceCategoriesPreview";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import { RWANDA_DISTRICTS } from "@/lib/config";
 
 const schema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -194,9 +195,9 @@ export default function HouseholdStep1() {
                 <label className="hh-label" htmlFor="district">District</label>
                 <select id="district" className="hh-select" value={form.district} onChange={(e)=>setForm({...form, district: e.target.value})}>
                   <option value="">Select district</option>
-                  <option value="Gasabo">Gasabo</option>
-                  <option value="Kicukiro">Kicukiro</option>
-                  <option value="Nyarugenge">Nyarugenge</option>
+                  {RWANDA_DISTRICTS.map(district => (
+                    <option key={district} value={district}>{district}</option>
+                  ))}
                 </select>
               </div>
               <div>

@@ -19,9 +19,9 @@ import Link from "next/link";
 
 function StatCard({ title, value, sub }: { title: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 p-4 bg-white">
-      <div className="text-slate-500 text-sm">{title}</div>
-      <div className="text-2xl font-semibold text-slate-800 mt-1">{value}</div>
+    <div className="stat-card">
+      <div className="stat-card-label">{title}</div>
+      <div className="stat-card-value">{value}</div>
       {sub && <div className="hh-muted mt-1">{sub}</div>}
     </div>
   );
@@ -379,3 +379,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

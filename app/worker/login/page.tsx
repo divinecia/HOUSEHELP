@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { signIn } from "next-auth/react";
+import { LiveRegion } from "@/components/accessibility/LiveRegion";
 
 const schema = z.object({
   identifier: z.string().min(3, "Enter phone or email"),
@@ -74,36 +75,93 @@ export default function WorkerLoginPage() {
 
   return (
     <div className="hh-page">
-      <main className="hh-form">
+      <LiveRegion message={error || ""} politeness="assertive" />
+      <main className="hh-form" role="main">
         <h1 className="hh-title">Welcome Back</h1>
         <p className="hh-subtitle">Worker</p>
 
-        <form onSubmit={onSubmit} className="hh-form-panel">
+        <form onSubmit={onSubmit} className="hh-form-panel" aria-label="Worker login form">
           <div>
             <label htmlFor="worker-identifier" className="hh-label">Phone Number or Email</label>
-            <input id="worker-identifier" className="hh-input" value={form.identifier} onChange={(e)=>setForm({...form, identifier: e.target.value})} placeholder="Enter your phone number or email" />
-            {errors.identifier && <div className="hh-error">{errors.identifier}</div>}
+            <input
+              id="worker-identifier"
+              className="hh-input"
+              value={form.identifier}
+              onChange={(e)=>setForm({...form, identifier: e.target.value})}
+              placeholder="Enter your phone number or email"
+              aria-required="true"
+              aria-invalid={!!errors.identifier}
+              aria-describedby={errors.identifier ? "identifier-error" : undefined}
+            />
+            {errors.identifier && <div id="identifier-error" className="hh-error" role="alert">{errors.identifier}</div>}
           </div>
           <div>
             <label htmlFor="worker-password" className="hh-label">Password</label>
             <div className="flex gap-2">
-              <input id="worker-password" className="hh-input flex-1" type={show?"text":"password"} value={form.password} onChange={(e)=>setForm({...form, password: e.target.value})} placeholder="Enter your password" />
-              <button type="button" className="hh-btn hh-btn-secondary" onClick={()=>setShow(s=>!s)}>{show?"Hide":"Show"}</button>
+              <input
+                id="worker-password"
+                className="hh-input flex-1"
+                type={show?"text":"password"}
+                value={form.password}
+                onChange={(e)=>setForm({...form, password: e.target.value})}
+                placeholder="Enter your password"
+                aria-required="true"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? "password-error" : undefined}
+              />
+              <button
+                type="button"
+                className="hh-btn hh-btn-secondary"
+                onClick={()=>setShow(s=>!s)}
+                aria-label={show ? "Hide password" : "Show password"}
+              >
+                {show?"Hide":"Show"}
+              </button>
             </div>
-            {errors.password && <div className="hh-error">{errors.password}</div>}
+            {errors.password && <div id="password-error" className="hh-error" role="alert">{errors.password}</div>}
           </div>
           <div className="flex items-center justify-between">
-            <label className="hh-label"><input type="checkbox" className="hh-checkbox" checked={form.remember} onChange={(e)=>setForm({...form, remember: e.target.checked})} /> Remember Me</label>
+            <label className="hh-label">
+              <input
+                type="checkbox"
+                className="hh-checkbox"
+                checked={form.remember}
+                onChange={(e)=>setForm({...form, remember: e.target.checked})}
+                aria-label="Remember me"
+              />
+              Remember Me
+            </label>
             <Link href="/auth/forgot-password" className="hh-link">Forgot Password?</Link>
           </div>
-          {error && <div className="hh-error">{error}</div>}
-          <button type="submit" className="hh-btn hh-btn-primary" disabled={loading}>{loading?"Logging in...":"Login"}</button>
+          {error && <div className="hh-error" role="alert" aria-live="assertive">{error}</div>}
+          <button
+            type="submit"
+            className="hh-btn hh-btn-primary"
+            disabled={loading}
+            aria-busy={loading}
+          >
+            {loading?"Logging in...":"Login"}
+          </button>
 
           <div className="mt-4">
             <div className="hh-muted mb-2">Or continue with</div>
             <div className="flex gap-3">
-              <button type="button" className="hh-btn hh-btn-secondary" onClick={()=>signIn('google')}>Continue with Google</button>
-              <button type="button" className="hh-btn hh-btn-secondary" onClick={()=>signIn('github')}>Continue with GitHub</button>
+              <button
+                type="button"
+                className="hh-btn hh-btn-secondary"
+                onClick={()=>signIn('google')}
+                aria-label="Continue with Google account"
+              >
+                Continue with Google
+              </button>
+              <button
+                type="button"
+                className="hh-btn hh-btn-secondary"
+                onClick={()=>signIn('github')}
+                aria-label="Continue with GitHub account"
+              >
+                Continue with GitHub
+              </button>
             </div>
           </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import LogoutButton from "@/components/LogoutButton";
 
@@ -71,22 +71,33 @@ function WorkerDashboardContent() {
     }
   }, []);
 
-  async function loadSummary(id: string) {
+  const loadSummary = useCallback(async (id: string, signal?: AbortSignal) => {
     try {
       setErr(null); setLoading(true);
       const token = localStorage.getItem('hh-token');
-      const res = await fetch(`/api/worker/dashboard/summary?worker_id=${encodeURIComponent(id)}`, { 
+      const res = await fetch(`/api/worker/dashboard/summary?worker_id=${encodeURIComponent(id)}`, {
         cache: 'no-store',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        signal
       });
       if (!res.ok) throw new Error('summary ' + res.status);
       const js = await res.json();
       setSummary(js);
-    } catch (e: unknown) { setErr(e instanceof Error ? e.message : 'An error occurred'); }
+    } catch (e: unknown) {
+      if (e instanceof Error && e.name === 'AbortError') return;
+      setErr(e instanceof Error ? e.message : 'An error occurred');
+    }
     finally { setLoading(false); }
-  }
+  }, []);
 
-  useEffect(() => { if (workerId) loadSummary(workerId); }, [workerId]);
+  useEffect(() => {
+    if (!workerId) return;
+
+    const controller = new AbortController();
+    loadSummary(workerId, controller.signal);
+
+    return () => controller.abort();
+  }, [workerId, loadSummary]);
 
   return (
     <div className="hh-page">

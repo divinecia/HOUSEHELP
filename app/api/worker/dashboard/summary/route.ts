@@ -1,4 +1,14 @@
 import { NextRequest } from "next/server";
+import {
+  authenticateRequest,
+  authorizeResourceAccess,
+  unauthorizedResponse,
+  forbiddenResponse,
+  serverErrorResponse,
+  checkRateLimit,
+  rateLimitResponse,
+  getClientIP
+} from "@/lib/api-auth";
 
 function env() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -7,20 +17,46 @@ function env() {
   return { url, key };
 }
 
-async function jget(u: string, headers: Record<string, string>) {
+interface FetchResult {
+  ok: boolean;
+  status?: number;
+  items: unknown[];
+}
+
+async function jget(u: string, headers: Record<string, string>): Promise<FetchResult> {
   const res = await fetch(u, { headers, cache: "no-store" });
-  if (!res.ok) return { ok: false, status: res.status, items: [] } as any;
+  if (!res.ok) return { ok: false, status: res.status, items: [] };
   const items = await res.json();
   return { ok: true, items };
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const { url, key } = env();
-    const { searchParams } = new URL(req.url);
-    const worker_id = searchParams.get("worker_id");
-    if (!worker_id) return Response.json({ error: "worker_id required" }, { status: 400 });
+    // Rate limiting
+    const clientIP = getClientIP(req);
+    const rateLimit = checkRateLimit(`dashboard:${clientIP}`, 60, 60000);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse();
+    }
 
+    // Authentication
+    const auth = authenticateRequest(req);
+    if (!auth.authenticated) {
+      return unauthorizedResponse(auth.error);
+    }
+
+    // Get worker_id from authenticated user (not from query params!)
+    const worker_id = auth.userId;
+    if (!worker_id) {
+      return unauthorizedResponse("Invalid user session");
+    }
+
+    // Verify user is a worker
+    if (auth.userType !== 'worker') {
+      return forbiddenResponse("Access restricted to workers");
+    }
+
+    const { url, key } = env();
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1).toISOString();
@@ -103,14 +139,14 @@ export async function GET(req: NextRequest) {
     return Response.json({
       ok: true,
       upcoming: upcoming.items,
-      today: (todayJobs.items as any[]).filter(j => new Date(j.scheduled_at).toISOString() < tomorrowStart),
+      today: (todayJobs.items as Array<{ scheduled_at: string }>).filter(j => new Date(j.scheduled_at).toISOString() < tomorrowStart),
       earnings: { day: earningsDay, week: earningsWeek, month: earningsMonth },
       training: training.items,
       ratings: ratings.items,
       messages: messages.items,
       notifications: notifications.items,
     });
-  } catch (e: any) {
-    return Response.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    return serverErrorResponse(error);
   }
 }

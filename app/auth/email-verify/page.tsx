@@ -22,9 +22,19 @@ export default function EmailVerifyPage() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    setMessage("Check your email for verification link.");
+    try {
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) throw new Error('Failed to send email');
+      setMessage("Check your email for verification link.");
+    } catch (error) {
+      setMessage("Failed to send verification email. Please try again.");
+    } finally {
+      setLoading(false);
+    }
     setCooldown(60);
   };
 
@@ -39,7 +49,7 @@ export default function EmailVerifyPage() {
             <label htmlFor="email-input" className="hh-label">Email Address</label>
             <input id="email-input" className="hh-input" type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Enter your email address" />
           </div>
-          {message && <div className="{message.includes('Check') ? 'text-green-600' : 'hh-error'}">{message}</div>}
+          {message && <div className={message.includes('Check') ? 'text-green-600' : 'hh-error'}>{message}</div>}
           <div className="flex items-center gap-3">
             <button className="hh-btn hh-btn-primary" onClick={sendEmail} disabled={loading}>{loading?"Sending...":"Send Verification Email"}</button>
             <button className="hh-btn hh-btn-secondary" onClick={()=>setCooldown(60)} disabled={cooldown>0}>
